@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JayaWarkop - Premium POS</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <!-- Google Fonts: Inter for UI, Courier Prime for Receipt -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Courier+Prime&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'Courier Prime', monospace; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+        /* Receipt Zigzag Edge */
+        .receipt-edge {
+            background: linear-gradient(135deg, transparent 5px, #FFFDF0 0) top left,
+                        linear-gradient(225deg, transparent 5px, #FFFDF0 0) top right;
+            background-size: 10px 100%;
+            background-repeat: repeat-x;
+        }
+        .receipt-bottom-edge {
+            height: 10px;
+            background: radial-gradient(circle, transparent 50%, #FFFDF0 50%) -5px -5px;
+            background-size: 10px 10px;
+            transform: rotate(180deg);
+        }
+    </style>
+</head>
+<body class="bg-[#F8FAFC] text-[#1E293B] h-screen overflow-hidden selection:bg-gray-200"
+      x-data="posApp()">
+
+    <div class="flex h-full">
+
+        <!-- LEFT SIDEBAR -->
+        <aside class="w-20 lg:w-24 bg-white border-r border-slate-100 flex flex-col items-center py-8 z-20 shadow-sm">
+            <!-- Brand Icon -->
+            <div class="w-12 h-12 bg-black text-white rounded-2xl flex items-center justify-center font-bold text-xl mb-12 shadow-lg cursor-pointer hover:scale-105 transition-transform duration-300">
+                JW
+            </div>
+
+            <!-- Navigation Items -->
+            <nav class="flex flex-col space-y-8 flex-1 w-full items-center">
+                <button @click="currentTab = 'home'" 
+                        class="p-3 rounded-xl transition-all duration-300 group relative"
+                        :class="currentTab === 'home' ? 'bg-slate-100 text-black shadow-inner' : 'text-slate-400 hover:text-slate-600'">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    </svg>
+                    <span class="absolute left-14 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">POS</span>
+                </button>
+
+                <button @click="fetchTransactions(); currentTab = 'history'" 
+                        class="p-3 rounded-xl transition-all duration-300 group relative"
+                        :class="currentTab === 'history' ? 'bg-slate-100 text-black shadow-inner' : 'text-slate-400 hover:text-slate-600'">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="absolute left-14 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">History</span>
+                </button>
+
+                <button class="p-3 rounded-xl transition-all duration-300 group relative text-slate-400 hover:text-slate-600 mt-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-1 flex flex-col relative overflow-hidden bg-white/50 backdrop-blur-3xl">
+            
+            <!-- Floating Header -->
+            <header class="h-20 px-8 flex items-center justify-between sticky top-0 z-10">
+                <div class="flex flex-col">
+                    <h1 class="text-2xl font-bold tracking-tight text-slate-800" x-text="currentTab === 'home' ? 'JayaWarkop Menu' : 'Transactions'"></h1>
+                    <span class="text-sm text-slate-400" x-text="getDate()"></span>
+                </div>
+                
+                <!-- Search Bar -->
+                <div class="relative group" x-show="currentTab === 'home'">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-5 w-5 text-slate-400 group-focus-within:text-black transition-colors" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <input type="text" 
+                           x-model="search"
+                           class="pl-10 pr-4 py-2.5 w-64 lg:w-80 bg-white border border-slate-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-slate-300 shadow-xl transition-all"
+                           placeholder="Search wagyu, kopi...">
+                </div>
+            </header>
+
+            <!-- PRODUCT GRID (Home Tab) -->
+            <div x-show="currentTab === 'home'" class="flex-1 overflow-y-auto p-8 pt-2">
+                <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
+                    <template x-for="product in filteredProducts" :key="product.id">
+                        <div class="group bg-white rounded-3xl p-4 shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100/50 cursor-pointer flex flex-col h-full"
+                             @click="addToCart(product)">
+                            
+                            <!-- Image Container -->
+                            <div class="relative aspect-square rounded-2xl overflow-hidden mb-4 bg-slate-50">
+                                <img :src="product.image" 
+                                     :alt="product.name" 
+                                     class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                     loading="lazy">
+                                <div class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors"></div>
+                                <button class="absolute bottom-3 right-3 bg-white text-black p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <!-- Content -->
+                            <div class="mt-auto">
+                                <h3 class="font-semibold text-slate-800 text-lg leading-tight mb-1" x-text="product.name"></h3>
+                                <p class="text-slate-500 font-medium" x-text="formatIDR(product.price)"></p>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                
+                <!-- Empty State -->
+                <div x-show="filteredProducts.length === 0" class="h-full flex flex-col items-center justify-center text-slate-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <p>No items found for "<span x-text="search"></span>"</p>
+                </div>
+            </div>
+
+            <!-- TRANSACTION HISTORY GRID (History Tab) -->
+            <div x-show="currentTab === 'history'" class="flex-1 overflow-y-auto p-8 pt-2" style="display: none;">
+                <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-50 text-slate-800 font-semibold border-b border-slate-100">
+                            <tr>
+                                <th class="px-6 py-4">Transaction ID</th>
+                                <th class="px-6 py-4">Date</th>
+                                <th class="px-6 py-4 text-center">Items</th>
+                                <th class="px-6 py-4 text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <template x-for="txn in transactions" :key="txn.id">
+                                <tr class="hover:bg-slate-50/50 transition-colors">
+                                    <td class="px-6 py-4 font-mono text-slate-500" x-text="'#' + txn.id"></td>
+                                    <td class="px-6 py-4" x-text="txn.date"></td>
+                                    <td class="px-6 py-4 text-center">
+                                        <span class="bg-slate-100 text-slate-600 px-2 py-1 rounded-md text-xs font-medium" x-text="txn.items.length + ' Items'"></span>
+                                    </td>
+                                    <td class="px-6 py-4 text-right font-medium text-slate-900" x-text="formatIDR(txn.total)"></td>
+                                </tr>
+                            </template>
+                            <tr x-show="transactions.length === 0">
+                                <td colspan="4" class="px-6 py-12 text-center text-slate-400">No transaction history yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- RIGHT SIDEBAR (CART) -->
+        <aside class="w-80 2xl:w-96 bg-white border-l border-slate-100 shadow-2xl z-30 flex flex-col transition-all duration-300 relative"
+               x-show="currentTab === 'home'">
+            
+            <!-- Cart Header -->
+            <div class="p-6 border-b border-slate-50 flex items-center justify-between">
+                <h2 class="text-xl font-bold text-slate-800">Current Order</h2>
+                <button @click="clearCart()" class="text-xs font-medium text-red-500 hover:text-red-600 hover:bg-red-50 px-3 py-1 rounded-full transition-colors" x-show="cart.length > 0">
+                    Clear All
+                </button>
+            </div>
+
+            <!-- Cart Items -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-4">
+                <template x-for="item in cart" :key="item.id">
+                    <div class="flex gap-4 p-2 rounded-xl hover:bg-slate-50 transition-colors group">
+                        <!-- Image -->
+                        <img :src="item.image" class="w-16 h-16 object-cover rounded-lg shadow-sm">
+                        
+                        <!-- Details -->
+                        <div class="flex-1 flex flex-col justify-between py-0.5">
+                            <h4 class="font-medium text-slate-800 text-sm leading-tight" x-text="item.name"></h4>
+                            <p class="text-slate-400 text-xs" x-text="formatIDR(item.price)"></p>
+                        </div>
+
+                        <!-- Quantity Controls -->
+                        <div class="flex flex-col items-end justify-between">
+                            <p class="font-semibold text-slate-900 text-sm" x-text="formatIDR(item.price * item.quantity)"></p>
+                            <div class="flex items-center bg-slate-100 rounded-lg p-0.5">
+                                <button @click="updateQuantity(item.id, -1)" class="w-6 h-6 flex items-center justify-center text-slate-500 hover:bg-white hover:text-black hover:shadow-sm rounded-md transition-all text-xs font-bold">-</button>
+                                <span class="w-6 text-center text-xs font-medium" x-text="item.quantity"></span>
+                                <button @click="updateQuantity(item.id, 1)" class="w-6 h-6 flex items-center justify-center text-slate-500 hover:bg-white hover:text-black hover:shadow-sm rounded-md transition-all text-xs font-bold">+</button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Empty Cart State -->
+                <div x-show="cart.length === 0" class="flex flex-col items-center justify-center h-full text-slate-300 py-10">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                    <p class="text-sm">Order is empty</p>
+                </div>
+            </div>
+
+            <!-- Cart Footer -->
+            <div class="p-6 bg-slate-50 border-t border-slate-100">
+                <div class="space-y-3 mb-6">
+                    <div class="flex justify-between text-sm text-slate-500">
+                        <span>Subtotal</span>
+                        <span x-text="formatIDR(subtotal)"></span>
+                    </div>
+                    <div class="flex justify-between text-sm text-slate-500">
+                        <span>Tax (11%)</span>
+                        <span x-text="formatIDR(tax)"></span>
+                    </div>
+                    <div class="flex justify-between text-lg font-bold text-slate-900 pt-3 border-t border-slate-200">
+                        <span>Total</span>
+                        <span x-text="formatIDR(total)"></span>
+                    </div>
+                </div>
+
+                <button @click="processPayment()"
+                        :disabled="cart.length === 0"
+                        class="w-full py-4 bg-black text-white rounded-xl font-semibold shadow-lg shadow-slate-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none hover:bg-slate-800 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2">
+                    <span>Pay & Print</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                </button>
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- PAYMENT & RECEIPT MODAL -->
+    <div class="fixed inset-0 z-50 flex items-center justify-center" 
+         x-show="showReceipt || isProcessing"
+         x-transition.opacity
+         style="display: none;">
+        
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+
+        <!-- 1. Processing State -->
+        <div x-show="isProcessing" class="bg-white rounded-3xl p-8 shadow-2xl flex flex-col items-center z-10 animate-bounce-subtle">
+            <div class="w-12 h-12 border-4 border-slate-200 border-t-black rounded-full animate-spin mb-4"></div>
+            <p class="font-medium text-slate-600">Processing Payment...</p>
+        </div>
+
+        <!-- 2. Receipt Modal -->
+        <div x-show="showReceipt && !isProcessing" 
+             class="relative z-10 animate-slide-up"
+             @click.away="closeReceipt()">
+            
+            <!-- Close Button -->
+            <button @click="closeReceipt()" class="absolute -top-12 right-0 text-white/80 hover:text-white transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+
+            <!-- THERMAL RECEIPT -->
+            <div class="bg-[#FFFDF0] w-80 shadow-2xl relative font-mono text-sm leading-relaxed text-slate-800">
+                <!-- Top content -->
+                <div class="p-8 pb-4 text-center border-b-2 border-dashed border-slate-300/50">
+                    <h2 class="text-xl font-bold uppercase tracking-widest mb-1">JayaWarkop</h2>
+                    <p class="text-[10px] text-slate-500 uppercase tracking-wide">Premium Local Taste</p>
+                    <p class="text-[10px] text-slate-400 mt-2">Jakarta, Indonesia</p>
+                    <div class="mt-4 text-xs flex justify-between text-slate-500">
+                        <span x-text="receiptData.date"></span>
+                        <span x-text="receiptData.time"></span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">Order ID: <span class="font-bold text-slate-800" x-text="'#' + receiptData.id"></span></p>
+                </div>
+
+                <!-- Items -->
+                <div class="p-8 py-4 min-h-[150px]">
+                    <template x-for="item in receiptData.items" :key="item.id">
+                        <div class="flex justify-between mb-2">
+                            <div class="flex-1 pr-2">
+                                <span class="font-bold block" x-text="item.name"></span>
+                                <span class="text-xs text-slate-500" x-text="item.quantity + ' x ' + formatIDR(item.price)"></span>
+                            </div>
+                            <span class="font-medium" x-text="formatIDR(item.price * item.quantity)"></span>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Totals -->
+                <div class="px-8 pb-4">
+                    <div class="border-t-2 border-dashed border-slate-300/50 pt-4 space-y-1">
+                        <div class="flex justify-between text-xs">
+                            <span>Subtotal</span>
+                            <span x-text="formatIDR(receiptData.subtotal)"></span>
+                        </div>
+                        <div class="flex justify-between text-xs">
+                            <span>Tax (11%)</span>
+                            <span x-text="formatIDR(receiptData.tax)"></span>
+                        </div>
+                        <div class="flex justify-between text-lg font-bold mt-2 pt-2 border-t border-slate-200">
+                            <span>TOTAL</span>
+                            <span x-text="formatIDR(receiptData.total)"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="p-8 pt-4 text-center">
+                    <p class="text-xs font-medium mb-2">PAID VIA QRIS</p>
+                    <p class="text-[10px] text-slate-400">Thank you for visiting JayaWarkop!</p>
+                    
+                    <!-- Barcode stub -->
+                    <div class="mt-4 h-8 bg-slate-800 w-full opacity-80"></div>
+                </div>
+
+                <!-- Jagged Bottom Edge -->
+                <div class="receipt-bottom-edge w-full absolute -bottom-2 left-0"></div>
+            </div>
+
+            <!-- Print Action -->
+            <button @click="printReceipt()" class="mt-6 w-full py-3 bg-white text-black font-bold rounded-xl shadow-lg hover:bg-slate-100 transition-colors flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                Print Receipt
+            </button>
+        </div>
+    </div>
+
+    <!-- Alpine.js Application Logic -->
+    <script>
+        function posApp() {
+            return {
+                currentTab: 'home', // 'home', 'history', 'settings'
+                search: '',
+                products: {{ products | tojson }},
+                cart: [],
+                transactions: [],
+                
+                // Payment States
+                isProcessing: false,
+                showReceipt: false,
+                receiptData: {},
+
+                init() {
+                    // Load any persisted data if needed, or just start fresh
+                },
+
+                get filteredProducts() {
+                    if (this.search === '') return this.products;
+                    return this.products.filter(p => 
+                        p.name.toLowerCase().includes(this.search.toLowerCase())
+                    );
+                },
+
+                get subtotal() {
+                    return this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                },
+
+                get tax() {
+                    return this.subtotal * 0.11;
+                },
+
+                get total() {
+                    return this.subtotal + this.tax;
+                },
+
+                addToCart(product) {
+                    const existingItem = this.cart.find(item => item.id === product.id);
+                    if (existingItem) {
+                        existingItem.quantity++;
+                    } else {
+                        this.cart.push({ ...product, quantity: 1 });
+                    }
+                },
+
+                updateQuantity(id, change) {
+                    const item = this.cart.find(item => item.id === id);
+                    if (item) {
+                        item.quantity += change;
+                        if (item.quantity <= 0) {
+                            this.removeFromCart(id);
+                        }
+                    }
+                },
+
+                removeFromCart(id) {
+                    this.cart = this.cart.filter(item => item.id !== id);
+                },
+
+                clearCart() {
+                    this.cart = [];
+                },
+
+                formatIDR(number) {
+                    return new Intl.NumberFormat('id-ID', { 
+                        style: 'currency', 
+                        currency: 'IDR',
+                        minimumFractionDigits: 0
+                    }).format(number);
+                },
+
+                getDate() {
+                    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                    return new Date().toLocaleDateString('en-US', options);
+                },
+
+                async processPayment() {
+                    if (this.cart.length === 0) return;
+
+                    this.isProcessing = true;
+
+                    // Simulate processing delay
+                    setTimeout(async () => {
+                        // Prepare transaction data
+                        const transactionPayload = {
+                            items: this.cart,
+                            subtotal: this.subtotal,
+                            tax: this.tax,
+                            total: this.total
+                        };
+
+                        try {
+                            // Send to backend
+                            const response = await fetch('/api/transactions', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(transactionPayload)
+                            });
+                            
+                            const result = await response.json();
+
+                            // Prepare Receipt Data
+                            const now = new Date();
+                            this.receiptData = {
+                                id: result.id,
+                                date: now.toLocaleDateString('en-US'),
+                                time: now.toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'}),
+                                items: [...this.cart],
+                                subtotal: this.subtotal,
+                                tax: this.tax,
+                                total: this.total
+                            };
+
+                            this.isProcessing = false;
+                            this.showReceipt = true;
+                            
+                            // Clear cart in background
+                            this.clearCart();
+                            
+                        } catch (error) {
+                            console.error('Transaction failed:', error);
+                            this.isProcessing = false;
+                            alert('Transaction failed. Please try again.');
+                        }
+                    }, 2000);
+                },
+
+                closeReceipt() {
+                    this.showReceipt = false;
+                    this.currentTab = 'home';
+                },
+                
+                printReceipt() {
+                    window.print();
+                    // In a real app, this would trigger the thermal printer driver
+                },
+
+                async fetchTransactions() {
+                    try {
+                        const response = await fetch('/api/transactions');
+                        this.transactions = await response.json();
+                    } catch (error) {
+                        console.error('Failed to fetch transactions:', error);
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
