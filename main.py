@@ -12,7 +12,7 @@ PRODUCTS = [
         "id": 1,
         "name": "Nasi Goreng",
         "price": 85000,
-        "image": "https://images.unsplash.com/photo-1512058560366-cd242d5f1f96?auto=format&fit=crop&q=80&w=1000",
+        "image": "/static/images/nasi-goreng.jpg",
         "category": "Food"
     },
     {
