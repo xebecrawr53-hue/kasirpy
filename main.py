@@ -12,7 +12,7 @@ PRODUCTS = [
         "id": 1,
         "name": "Nasi Goreng Wagyu",
         "price": 85000,
-        "image": "https://images.unsplash.com/photo-1603133872878-684f57143095?auto=format&fit=crop&q=80&w=1000",
+        "image": "https://images.unsplash.com/photo-1512058560366-cd242d5f1f96?auto=format&fit=crop&q=80&w=1000",
         "category": "Food"
     },
     {
@@ -33,7 +33,7 @@ PRODUCTS = [
         "id": 4,
         "name": "Roti Bakar Belgian Choco",
         "price": 42000,
-        "image": "https://images.unsplash.com/photo-1586765795045-31294d131b7d?auto=format&fit=crop&q=80&w=1000", # Toast image approximation
+        "image": "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&q=80&w=1000", # Toast image
         "category": "Food"
     },
     {
@@ -61,7 +61,7 @@ PRODUCTS = [
         "id": 8,
         "name": "Mineral Water (Equil)",
         "price": 20000,
-        "image": "https://images.unsplash.com/photo-1523362628408-3c2601a08284?auto=format&fit=crop&q=80&w=1000",
+        "image": "https://images.unsplash.com/photo-1548839140-29a749e1cf4d?auto=format&fit=crop&q=80&w=1000",
         "category": "Beverage"
     }
 ]
