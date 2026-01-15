@@ -149,19 +149,32 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
-                            <template x-for="txn in transactions" :key="txn.id">
-                                <tr class="hover:bg-slate-50/50 transition-colors">
-                                    <td class="px-6 py-4 font-mono text-slate-500" x-text="'#' + txn.id"></td>
-                                    <td class="px-6 py-4" x-text="txn.date"></td>
-                                    <td class="px-6 py-4 text-center">
-                                        <span class="bg-slate-100 text-slate-600 px-2 py-1 rounded-md text-xs font-medium" x-text="txn.items.length + ' Items'"></span>
-                                    </td>
-                                    <td class="px-6 py-4 text-right font-medium text-slate-900" x-text="formatIDR(txn.total)"></td>
-                                </tr>
-                            </template>
-                            <tr x-show="transactions.length === 0">
-                                <td colspan="4" class="px-6 py-12 text-center text-slate-400">No transaction history yet.</td>
-                            </tr>
+    <template x-for="txn in transactions" :key="txn.id">
+        <tr class="hover:bg-slate-50/50 transition-colors">
+            <td class="px-6 py-4 font-mono text-slate-500 text-sm" x-text="txn.order_id"></td>
+
+            <td class="px-6 py-4 text-slate-600 text-sm">
+                <div x-text="new Date(txn.created_at).toLocaleDateString('id-ID')"></div>
+                <div class="text-xs text-slate-400" x-text="new Date(txn.created_at).toLocaleTimeString('id-ID')"></div>
+            </td>
+
+            <td class="px-6 py-4 text-center">
+                <span class="bg-slate-100 text-slate-600 px-2 py-1 rounded-md text-xs font-medium" 
+                      x-text="(txn.items ? txn.items.length : 0) + ' Items'">
+                </span>
+            </td>
+
+            <td class="px-6 py-4 text-right font-medium text-slate-900" 
+                x-text="'Rp ' + (txn.total_amount || 0).toLocaleString('id-ID')">
+            </td>
+        </tr>
+    </template>
+
+    <tr x-show="!transactions || transactions.length === 0">
+        <td colspan="4" class="px-6 py-12 text-center text-slate-400 text-sm">
+            Belum ada riwayat transaksi.
+        </td>
+    </tr>
                         </tbody>
                     </table>
                 </div>

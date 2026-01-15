@@ -5,6 +5,8 @@ import string
 import os
 import json
 from supabase import create_client, Client
+import random
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -27,36 +29,58 @@ def index():
 
 @app.route('/api/transactions', methods=['GET', 'POST'])
 def handle_transactions():
+    # --- SKENARIO 1: MENYIMPAN TRANSAKSI (Saat Klik Pay) ---
     if request.method == 'POST':
         try:
-            data = request.json
+            data = request.get_json()
             
-            # Generate a realistic transaction record
-            order_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-            items = data.get('items', [])
-            total_amount = data.get('total', 0)
+            # 1. Buat ID Order Random
+            new_order_id = f"#ORD-{random.randint(1000, 9999)}"
+            
+            # 2. Ambil data dari Frontend
+            # Kita pakai .get() biar gak error kalau datanya kosong
+            items_data = data.get('items', [])
+            if not items_data:
+                items_data = data.get('cart', []) # Jaga-jaga kalau namanya 'cart'
+            
+            total_price = data.get('total', 0)
+            if total_price == 0:
+                total_price = data.get('total_amount', 0)
+
+            # 3. Siapkan Bungkusan Data untuk Supabase
+            transaction_payload = {
+                "order_id": new_order_id,
+                "total_amount": total_price,
+                "items": items_data  # Ini akan otomatis jadi JSONB di Supabase
+            }
+
+            # 4. KIRIM KE SUPABASE
+            supabase.table('transactions').insert(transaction_payload).execute()
+
+            # 5. Beri respon sukses ke Frontend
+            return jsonify({
+                "success": True, 
+                "message": "Saved to Supabase", 
+                "order_id": new_order_id
+            })
+
+        except Exception as e:
+            print(f"GAGAL SIMPAN TRANSAKSI: {e}")
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    # --- SKENARIO 2: MENGAMBIL HISTORY (Saat Buka Tab History) ---
+    else:
+        try:
+            # Ambil semua data dari tabel transactions, urutkan dari yang terbaru
+            response = supabase.table('transactions').select("*").order('created_at', desc=True).execute()
+            return jsonify(response.data)
+        except Exception as e:
+            print(f"GAGAL AMBIL HISTORY: {e}")
+            return jsonify([])
             
             # 2. Saving Orders: INSERT the successful order into the 'transactions' table in Supabase
             # Items column is JSONB, so we pass the list directly (postgrest handles it)
-            transaction_data = {
-                "order_id": order_id,
-                "total_amount": total_amount,
-                "items": items,
-                "subtotal": data.get('subtotal', 0),
-                "tax": data.get('tax', 0)
-            }
-            
-            response = supabase.table('transactions').insert(transaction_data).execute()
-            
-            # Add formatted date for the receipt UI (since Supabase might return it in a different format)
-            new_txn = response.data[0]
-            new_txn['id'] = new_txn['order_id'] # Map for frontend compatibility
-            new_txn['date'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-            return jsonify(new_txn), 201
-        except Exception as e:
-            print(f"Error saving transaction: {e}")
-            return jsonify({"error": str(e)}), 500
+        
             
     # 3. History Page: fetch data from the 'transactions' table in Supabase
     try:
