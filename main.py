@@ -122,6 +122,40 @@ def index():
         
     return render_template('index.html', products=products, best_seller_name=best_seller_name)
 
+@app.route('/api/chart_data')
+def get_chart_data():
+    try:
+        # Get last 7 days including today
+        now = datetime.datetime.now()
+        dates = [(now - datetime.timedelta(days=i)).date() for i in range(6, -1, -1)]
+        labels = [d.strftime('%a') for d in dates] # Mon, Tue, etc.
+        
+        # Initialize revenue dict
+        revenue_by_day = {d.isoformat(): 0 for d in dates}
+        
+        # Fetch transactions for the date range
+        start_date = dates[0].isoformat()
+        response = supabase.table('transactions').select("*").gte('created_at', start_date).execute()
+        txns = response.data or []
+        
+        for txn in txns:
+            try:
+                created_at_str = txn.get('created_at', '').split('T')[0]
+                if created_at_str in revenue_by_day:
+                    revenue_by_day[created_at_str] += float(txn.get('total_amount', 0))
+            except:
+                continue
+                
+        values = [revenue_by_day[d.isoformat()] for d in dates]
+        
+        return jsonify({
+            "labels": labels,
+            "values": values
+        })
+    except Exception as e:
+        print(f"Error fetching chart data: {e}")
+        return jsonify({"labels": [], "values": []}), 500
+
 @app.route('/api/stats')
 def get_stats():
     analytics = calculate_analytics()

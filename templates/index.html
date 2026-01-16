@@ -8,6 +8,9 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
@@ -254,6 +257,18 @@
 
             <!-- REVENUE VIEW -->
             <div x-show="currentTab === 'revenue'" class="flex-1 overflow-y-auto p-8 pt-2" style="display: none;">
+                
+                <!-- Revenue Chart -->
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 mb-8">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="font-bold text-slate-800">Revenue Trend (Last 7 Days)</h3>
+                        <span class="text-xs font-medium text-slate-400 uppercase tracking-widest">Daily Performance</span>
+                    </div>
+                    <div class="h-64">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                </div>
+
                 <!-- Stats Cards -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
@@ -509,6 +524,7 @@
                 isLoggedIn: sessionStorage.getItem('isLoggedIn') === 'true',
                 pinInput: '',
                 editStockMode: false,
+                chartInstance: null,
                 currentTab: 'home', // 'home', 'history', 'settings', 'revenue'
                 search: '',
                 products: {{ products | tojson }},
