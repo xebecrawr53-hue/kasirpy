@@ -41,9 +41,7 @@ def calculate_analytics():
     }
 
     for txn in all_txns:
-        # Parse created_at. Example format: 2024-01-15T10:00:00.000000+00:00
         try:
-            # Handle potential variations in ISO format
             created_at_str = txn.get('created_at', '').split('+')[0]
             txn_date = datetime.datetime.fromisoformat(created_at_str)
         except (ValueError, TypeError):
@@ -89,11 +87,8 @@ def calculate_analytics():
 @app.route('/')
 def index():
     try:
-        # Fetch menu
         menu_response = supabase.table('menu').select("*").execute()
         products = menu_response.data or []
-        
-        # Get analytics for Best Seller badge
         analytics = calculate_analytics()
         best_seller_name = analytics["best_seller_month"]
     except Exception as e:
@@ -106,14 +101,16 @@ def index():
 @app.route('/api/stats')
 def get_stats():
     analytics = calculate_analytics()
-    return jsonify(analytics["stats"])
+    response_data = analytics["stats"]
+    response_data["best_seller_name"] = analytics["best_seller_month"]
+    return jsonify(response_data)
 
 @app.route('/api/transactions', methods=['GET', 'POST'])
 def handle_transactions():
     if request.method == 'POST':
         try:
             data = request.json
-            order_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+            order_id = "#ORD-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
             items = data.get('items', [])
             total_amount = data.get('total', 0)
             
@@ -126,13 +123,18 @@ def handle_transactions():
             }
             
             response = supabase.table('transactions').insert(transaction_data).execute()
+            if not response.data:
+                raise Exception("Failed to insert transaction into Supabase")
+                
             new_txn = response.data[0]
-            new_txn['id'] = new_txn['order_id']
-            new_txn['date'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            return jsonify(new_txn), 201
+            return jsonify({
+                "success": True,
+                "order_id": order_id,
+                "transaction": new_txn
+            }), 201
         except Exception as e:
             print(f"Error saving transaction: {e}")
-            return jsonify({"error": str(e)}), 500
+            return jsonify({"success": False, "error": str(e)}), 500
             
     try:
         response = supabase.table('transactions').select("*").order('created_at', desc=True).execute()

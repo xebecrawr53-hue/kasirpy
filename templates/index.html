@@ -116,12 +116,12 @@
                             
                             <!-- Image Container -->
                             <div class="relative aspect-square rounded-2xl overflow-hidden mb-4 bg-slate-50">
-                                <template x-if="product.name === '{{ best_seller_name }}'">
-                                    <div class="absolute top-2 left-2 z-10 bg-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg flex items-center gap-1">
-                                        <span>🔥</span>
-                                        <span>BEST SELLER</span>
-                                    </div>
-                                </template>
+                                <div x-show="product.name === bestSellerName" 
+                                     class="absolute top-2 left-2 z-10 bg-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg flex items-center gap-1"
+                                     style="display: none;">
+                                    <span>🔥</span>
+                                    <span>BEST SELLER</span>
+                                </div>
                                 <img :src="product.image_url" 
                                      :alt="product.name" 
                                      class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
@@ -371,7 +371,7 @@
                         <span x-text="receiptData.date"></span>
                         <span x-text="receiptData.time"></span>
                     </div>
-                    <p class="text-xs text-slate-500 mt-1">Order ID: <span class="font-bold text-slate-800" x-text="'#' + receiptData.id"></span></p>
+                    <p class="text-xs text-slate-500 mt-1">Order ID: <span class="font-bold text-slate-800" x-text="lastOrderId"></span></p>
                 </div>
 
                 <!-- Items -->
@@ -443,6 +443,8 @@
                     year: { revenue: 0, top_items: [] }
                 },
                 selectedStatTimeframe: 'month',
+                bestSellerName: '{{ best_seller_name }}',
+                lastOrderId: '',
                 
                 // Payment States
                 isProcessing: false,
@@ -514,53 +516,58 @@
 
                 async processPayment() {
                     if (this.cart.length === 0) return;
-
+                    
                     this.isProcessing = true;
-
-                    // Simulate processing delay
-                    setTimeout(async () => {
-                        // Prepare transaction data
-                        const transactionPayload = {
-                            items: this.cart,
-                            subtotal: this.subtotal,
-                            tax: this.tax,
-                            total: this.total
-                        };
-
-                        try {
-                            // Send to backend
-                            const response = await fetch('/api/transactions', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(transactionPayload)
-                            });
+                    
+                    try {
+                        const response = await fetch('/api/transactions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                items: this.cart,
+                                subtotal: this.subtotal,
+                                tax: this.tax,
+                                total: this.total
+                            })
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            this.lastOrderId = result.order_id;
                             
-                            const result = await response.json();
-
-                            // Prepare Receipt Data
+                            // Setup Receipt Data
                             const now = new Date();
                             this.receiptData = {
-                                id: result.id,
-                                date: now.toLocaleDateString('en-US'),
-                                time: now.toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'}),
+                                date: now.toLocaleDateString('id-ID'),
+                                time: now.toLocaleTimeString('id-ID'),
                                 items: [...this.cart],
                                 subtotal: this.subtotal,
                                 tax: this.tax,
                                 total: this.total
                             };
-
+                            
+                            // Clear cart
+                            this.cart = [];
+                            
+                            // Refresh Data Synchronously
+                            await Promise.all([
+                                this.fetchStats(),
+                                this.fetchTransactions()
+                            ]);
+                            
+                            // Show Receipt
                             this.isProcessing = false;
                             this.showReceipt = true;
-                            
-                            // Clear cart in background
-                            this.clearCart();
-                            
-                        } catch (error) {
-                            console.error('Transaction failed:', error);
+                        } else {
+                            alert('Gagal memproses transaksi: ' + (result.error || 'Unknown error'));
                             this.isProcessing = false;
-                            alert('Transaction failed. Please try again.');
                         }
-                    }, 2000);
+                    } catch (error) {
+                        console.error('Payment Error:', error);
+                        alert('Terjadi kesalahan koneksi.');
+                        this.isProcessing = false;
+                    }
                 },
 
                 closeReceipt() {
@@ -585,7 +592,9 @@
                 async fetchStats() {
                     try {
                         const response = await fetch('/api/stats');
-                        this.stats = await response.json();
+                        const data = await response.json();
+                        this.stats = data;
+                        this.bestSellerName = data.best_seller_name || '';
                     } catch (error) {
                         console.error('Failed to fetch stats:', error);
                     }
