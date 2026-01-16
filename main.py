@@ -1,9 +1,11 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, make_response
 import datetime
 import random
 import string
 import os
 import json
+import csv
+import io
 from collections import Counter
 from supabase import create_client, Client
 
@@ -13,6 +15,21 @@ app = Flask(__name__)
 url: str = os.environ.get("SUPABASE_URL", "")
 key: str = os.environ.get("SUPABASE_KEY", "")
 supabase: Client = create_client(url, key)
+
+UNAVAILABLE_ITEMS_FILE = "unavailable_items.json"
+
+def get_unavailable_ids():
+    if not os.path.exists(UNAVAILABLE_ITEMS_FILE):
+        return []
+    try:
+        with open(UNAVAILABLE_ITEMS_FILE, "r") as f:
+            return json.load(f)
+    except:
+        return []
+
+def save_unavailable_ids(ids):
+    with open(UNAVAILABLE_ITEMS_FILE, "w") as f:
+        json.dump(ids, f)
 
 def calculate_analytics():
     try:
@@ -88,7 +105,14 @@ def calculate_analytics():
 def index():
     try:
         menu_response = supabase.table('menu').select("*").execute()
-        products = menu_response.data or []
+        raw_products = menu_response.data or []
+        unavailable_ids = get_unavailable_ids()
+        
+        products = []
+        for p in raw_products:
+            p['is_available'] = p['id'] not in unavailable_ids
+            products.append(p)
+
         analytics = calculate_analytics()
         best_seller_name = analytics["best_seller_name"]
     except Exception as e:
@@ -105,6 +129,49 @@ def get_stats():
     response_data["best_seller_name"] = analytics["best_seller_name"]
     return jsonify(response_data)
 
+@app.route('/api/toggle_stock/<int:item_id>', methods=['POST'])
+def toggle_stock(item_id):
+    unavailable_ids = get_unavailable_ids()
+    if item_id in unavailable_ids:
+        unavailable_ids.remove(item_id)
+    else:
+        unavailable_ids.append(item_id)
+    save_unavailable_ids(unavailable_ids)
+    return jsonify({"success": True, "unavailable_ids": unavailable_ids})
+
+@app.route('/api/export_csv')
+def export_csv():
+    try:
+        response = supabase.table('transactions').select("*").order('created_at', desc=True).execute()
+        txns = response.data or []
+        
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['Order ID', 'Date', 'Total', 'Items'])
+        
+        for txn in txns:
+            items_raw = txn.get('items', [])
+            if isinstance(items_raw, str):
+                try:
+                    items_raw = json.loads(items_raw)
+                except:
+                    items_raw = []
+            
+            items_summary = ", ".join([f"{i.get('name')} x{i.get('quantity')}" for i in items_raw])
+            writer.writerow([
+                txn.get('order_id'),
+                txn.get('created_at'),
+                txn.get('total_amount'),
+                items_summary
+            ])
+            
+        response = make_response(output.getvalue())
+        response.headers["Content-Disposition"] = "attachment; filename=laporan_penjualan.csv"
+        response.headers["Content-type"] = "text/csv"
+        return response
+    except Exception as e:
+        return str(e), 500
+
 @app.route('/api/transactions', methods=['GET', 'POST'])
 def handle_transactions():
     if request.method == 'POST':
@@ -114,8 +181,6 @@ def handle_transactions():
             items = data.get('items', [])
             total_amount = data.get('total', 0)
             
-            # Match schema: id, order_id, total_amount, items, created_at
-            # created_at is automatic in Supabase usually, but we can omit manual subtotal/tax
             transaction_data = {
                 "order_id": order_id,
                 "total_amount": total_amount,
@@ -127,8 +192,6 @@ def handle_transactions():
                 raise Exception("Failed to insert transaction into Supabase")
                 
             new_txn = response.data[0]
-            
-            # Recalculate best seller immediately
             analytics = calculate_analytics()
             
             return jsonify({
