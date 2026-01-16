@@ -235,7 +235,7 @@
 
             <td class="px-6 py-4 text-center">
                 <span class="bg-slate-100 text-slate-600 px-2 py-1 rounded-md text-xs font-medium" 
-                      x-text="(txn.items ? txn.items.length : 0) + ' Items'">
+                      x-text="(txn.items ? txn.items.reduce((sum, item) => sum + (parseInt(item.quantity) || 1), 0) : 0) + ' Items'">
                 </span>
             </td>
 
