@@ -722,8 +722,72 @@
                         const data = await response.json();
                         this.stats = data;
                         this.bestSellerName = data.best_seller_name || '';
+                        this.loadChart();
                     } catch (error) {
                         console.error('Failed to fetch stats:', error);
+                    }
+                },
+
+                async loadChart() {
+                    try {
+                        const response = await fetch('/api/chart_data');
+                        const data = await response.json();
+
+                        const canvas = document.getElementById('revenueChart');
+                        if (!canvas) return;
+                        const ctx = canvas.getContext('2d');
+                        
+                        if (this.chartInstance) {
+                            this.chartInstance.destroy();
+                        }
+
+                        this.chartInstance = new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: data.labels,
+                                datasets: [{
+                                    label: 'Revenue',
+                                    data: data.values,
+                                    backgroundColor: '#0F172A',
+                                    borderRadius: 12,
+                                    borderSkipped: false,
+                                    barThickness: 32
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        backgroundColor: '#0F172A',
+                                        padding: 12,
+                                        titleFont: { size: 14, weight: 'bold' },
+                                        bodyFont: { size: 13 },
+                                        displayColors: false,
+                                        callbacks: {
+                                            label: (context) => `Rp ${context.raw.toLocaleString('id-ID')}`
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        grid: { color: '#F1F5F9' },
+                                        ticks: {
+                                            color: '#94A3B8',
+                                            callback: (value) => value >= 1000000 ? (value/1000000).toFixed(1) + 'M' : (value/1000).toFixed(0) + 'K'
+                                        }
+                                    },
+                                    x: {
+                                        grid: { display: false },
+                                        ticks: { color: '#94A3B8' }
+                                    }
+                                }
+                            }
+                        });
+                    } catch (error) {
+                        console.error('Failed to load chart:', error);
                     }
                 }
             }
