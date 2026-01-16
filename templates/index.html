@@ -371,7 +371,7 @@
                         <span x-text="receiptData.date"></span>
                         <span x-text="receiptData.time"></span>
                     </div>
-                    <p class="text-xs text-slate-500 mt-1">Order ID: <span class="font-bold text-slate-800" x-text="lastOrderId"></span></p>
+                    <p class="text-xs text-slate-500 mt-1">Order ID: <span class="font-bold text-slate-800" x-text="lastOrderId || '...'"></span></p>
                 </div>
 
                 <!-- Items -->
@@ -535,6 +535,7 @@
                         
                         if (result.success) {
                             this.lastOrderId = result.order_id;
+                            this.bestSellerName = result.best_seller_name;
                             
                             // Setup Receipt Data
                             const now = new Date();
@@ -542,19 +543,17 @@
                                 date: now.toLocaleDateString('id-ID'),
                                 time: now.toLocaleTimeString('id-ID'),
                                 items: [...this.cart],
-                                subtotal: this.subtotal,
-                                tax: this.tax,
-                                total: this.total
+                                subtotal: result.subtotal,
+                                tax: result.tax,
+                                total: result.total
                             };
                             
                             // Clear cart
                             this.cart = [];
                             
-                            // Refresh Data Synchronously
-                            await Promise.all([
-                                this.fetchStats(),
-                                this.fetchTransactions()
-                            ]);
+                            // Refresh Background Data
+                            this.fetchStats();
+                            this.fetchTransactions();
                             
                             // Show Receipt
                             this.isProcessing = false;

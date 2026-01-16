@@ -21,7 +21,7 @@ def calculate_analytics():
     except Exception as e:
         print(f"Error fetching transactions for analytics: {e}")
         return {
-            "best_seller_month": None,
+            "best_seller_name": None,
             "stats": {
                 "week": {"revenue": 0, "top_items": []},
                 "month": {"revenue": 0, "top_items": []},
@@ -65,7 +65,7 @@ def calculate_analytics():
 
     # Format result
     result_stats = {}
-    best_seller_month = None
+    best_seller_name = None
     
     for tf_name, tf_data in timeframes.items():
         top_items = [
@@ -77,10 +77,10 @@ def calculate_analytics():
             "top_items": top_items
         }
         if tf_name == "month" and top_items:
-            best_seller_month = top_items[0]["name"]
+            best_seller_name = top_items[0]["name"]
 
     return {
-        "best_seller_month": best_seller_month,
+        "best_seller_name": best_seller_name,
         "stats": result_stats
     }
 
@@ -90,7 +90,7 @@ def index():
         menu_response = supabase.table('menu').select("*").execute()
         products = menu_response.data or []
         analytics = calculate_analytics()
-        best_seller_name = analytics["best_seller_month"]
+        best_seller_name = analytics["best_seller_name"]
     except Exception as e:
         print(f"Error in home route: {e}")
         products = []
@@ -102,7 +102,7 @@ def index():
 def get_stats():
     analytics = calculate_analytics()
     response_data = analytics["stats"]
-    response_data["best_seller_name"] = analytics["best_seller_month"]
+    response_data["best_seller_name"] = analytics["best_seller_name"]
     return jsonify(response_data)
 
 @app.route('/api/transactions', methods=['GET', 'POST'])
@@ -114,12 +114,12 @@ def handle_transactions():
             items = data.get('items', [])
             total_amount = data.get('total', 0)
             
+            # Match schema: id, order_id, total_amount, items, created_at
+            # created_at is automatic in Supabase usually, but we can omit manual subtotal/tax
             transaction_data = {
                 "order_id": order_id,
                 "total_amount": total_amount,
-                "items": items,
-                "subtotal": data.get('subtotal', 0),
-                "tax": data.get('tax', 0)
+                "items": items
             }
             
             response = supabase.table('transactions').insert(transaction_data).execute()
@@ -127,9 +127,17 @@ def handle_transactions():
                 raise Exception("Failed to insert transaction into Supabase")
                 
             new_txn = response.data[0]
+            
+            # Recalculate best seller immediately
+            analytics = calculate_analytics()
+            
             return jsonify({
                 "success": True,
                 "order_id": order_id,
+                "best_seller_name": analytics["best_seller_name"],
+                "subtotal": data.get('subtotal', 0),
+                "tax": data.get('tax', 0),
+                "total": total_amount,
                 "transaction": new_txn
             }), 201
         except Exception as e:
