@@ -42,8 +42,29 @@
         }
     </style>
 </head>
-<body class="bg-[#F8FAFC] text-[#1E293B] h-screen overflow-hidden selection:bg-gray-200"
-      x-data="posApp()">
+    <body class="bg-[#F8FAFC] text-[#1E293B] h-screen overflow-hidden selection:bg-gray-200"
+      x-data="posApp()"
+      x-init="init()">
+
+    <!-- Lockout Overlay -->
+    <div x-show="isLocked" 
+         class="fixed inset-0 bg-white z-[200] flex flex-col items-center justify-center p-8 text-center"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         style="display: none;">
+        <div class="w-24 h-24 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-8 text-5xl shadow-inner">
+            🔒
+        </div>
+        <h2 class="text-3xl font-bold text-slate-900 mb-4 tracking-tight">Terlalu banyak percobaan salah</h2>
+        <div class="bg-slate-50 px-8 py-4 rounded-3xl border border-slate-100">
+            <p class="text-slate-500 font-medium mb-1 uppercase tracking-widest text-xs">Coba lagi dalam</p>
+            <p class="text-5xl font-black text-slate-900 tabular-nums">
+                <span x-text="lockoutTimer"></span>s
+            </p>
+        </div>
+        <p class="mt-8 text-sm text-slate-400 font-medium">Keamanan sistem ditingkatkan demi melindungi data Anda.</p>
+    </div>
 
     <!-- Login Modal Overlay -->
     <div x-show="!isLoggedIn" 
@@ -523,6 +544,10 @@
             return {
                 isLoggedIn: sessionStorage.getItem('isLoggedIn') === 'true',
                 pinInput: '',
+                loginAttempts: 0,
+                lockoutTimer: 0,
+                isLocked: false,
+                lockoutInterval: null,
                 editStockMode: false,
                 chartInstance: null,
                 currentTab: 'home', // 'home', 'history', 'settings', 'revenue'
@@ -545,7 +570,31 @@
                 receiptData: {},
 
                 init() {
-                    // Load any persisted data if needed, or just start fresh
+                    // Check for existing lockout
+                    const timestamp = localStorage.getItem('lockoutTimestamp');
+                    if (timestamp) {
+                        const remaining = Math.ceil((parseInt(timestamp) - Date.now()) / 1000);
+                        if (remaining > 0) {
+                            this.isLocked = true;
+                            this.lockoutTimer = remaining;
+                            this.startLockoutCountdown();
+                        } else {
+                            localStorage.removeItem('lockoutTimestamp');
+                        }
+                    }
+                },
+
+                startLockoutCountdown() {
+                    if (this.lockoutInterval) clearInterval(this.lockoutInterval);
+                    this.lockoutInterval = setInterval(() => {
+                        this.lockoutTimer--;
+                        if (this.lockoutTimer <= 0) {
+                            clearInterval(this.lockoutInterval);
+                            this.isLocked = false;
+                            this.loginAttempts = 0;
+                            localStorage.removeItem('lockoutTimestamp');
+                        }
+                    }, 1000);
                 },
 
                 get filteredProducts() {
@@ -608,13 +657,27 @@
                 },
 
                 login() {
+                    if (this.isLocked) return;
+                    
                     if (this.pinInput === '1234') {
                         this.isLoggedIn = true;
                         sessionStorage.setItem('isLoggedIn', 'true');
                         this.pinInput = '';
+                        this.loginAttempts = 0;
+                        localStorage.removeItem('lockoutTimestamp');
                     } else {
-                        alert('PIN Salah!');
-                        this.pinInput = '';
+                        this.loginAttempts++;
+                        if (this.loginAttempts >= 3) {
+                            this.isLocked = true;
+                            this.lockoutTimer = 30;
+                            const expire = Date.now() + 30000;
+                            localStorage.setItem('lockoutTimestamp', expire.toString());
+                            this.startLockoutCountdown();
+                            this.pinInput = '';
+                        } else {
+                            alert('PIN Salah! Percobaan ke-' + this.loginAttempts + '/3');
+                            this.pinInput = '';
+                        }
                     }
                 },
 
