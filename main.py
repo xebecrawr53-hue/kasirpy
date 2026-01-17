@@ -122,6 +122,17 @@ def index():
         
     return render_template('index.html', products=products, best_seller_name=best_seller_name)
 
+@app.route('/api/reset_database', methods=['POST'])
+def reset_database():
+    try:
+        # Delete all transactions. Using a filter that is always true for existing records.
+        # neq('id', 0) is safe for auto-incrementing IDs starting from 1.
+        supabase.table('transactions').delete().neq('id', 0).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"Error resetting database: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/api/chart_data')
 def get_chart_data():
     try:

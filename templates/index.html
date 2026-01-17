@@ -594,6 +594,26 @@
                     this.cart = [];
                 },
 
+                async confirmReset() {
+                    const pin = prompt("Masukkan PIN Admin untuk menghapus SEMUA data permanen:");
+                    if (pin === '1234') {
+                        try {
+                            const response = await fetch('/api/reset_database', { method: 'POST' });
+                            if (response.ok) {
+                                alert("Data berhasil di-reset!");
+                                window.location.reload();
+                            } else {
+                                alert("Gagal menghapus data.");
+                            }
+                        } catch (error) {
+                            console.error('Reset error:', error);
+                            alert("Terjadi kesalahan koneksi.");
+                        }
+                    } else {
+                        alert("PIN Salah! Penghapusan dibatalkan.");
+                    }
+                },
+
                 formatIDR(number) {
                     return new Intl.NumberFormat('id-ID', { 
                         style: 'currency', 
