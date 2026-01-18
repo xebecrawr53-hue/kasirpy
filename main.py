@@ -254,6 +254,25 @@ def handle_transactions():
         print(f"Error fetching history: {e}")
         return jsonify([]), 500
 
+@app.route('/api/set_local_images', methods=['GET'])
+def set_local_images():
+    try:
+        updates = [
+            {"keyword": "Mineral", "path": "/static/images/mineral.jpg"},
+            {"keyword": "Water", "path": "/static/images/mineral.jpg"},
+            {"keyword": "Roti Bakar", "path": "/static/images/roti.jpg"},
+            {"keyword": "Matcha", "path": "/static/images/matcha.jpeg"},
+            {"keyword": "Pisang", "path": "/static/images/pisang.jpg"},
+            {"keyword": "Indomie", "path": "/static/images/mie.jpg"}
+        ]
+        
+        for item in updates:
+            supabase.table('menu').update({'image_url': item['path']}).ilike('name', f"%{item['keyword']}%").execute()
+            
+        return jsonify({"status": "Success", "updated_items": updates})
+    except Exception as e:
+        return jsonify({"status": "Error", "message": str(e)}), 500
+
 @app.route('/api/fix_images', methods=['GET'])
 def fix_images():
     try:
