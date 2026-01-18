@@ -282,5 +282,36 @@ def fix_images():
     except Exception as e:
         return jsonify({"status": "Error", "message": str(e)}), 500
 
+def initialize_database():
+    """Ensure tables exist and seed only if empty to prevent data loss."""
+    try:
+        # Note: In Supabase, table creation is usually done via SQL Editor or migrations.
+        # If there were local schema creation logic (like db.create_all()), it would go here.
+        # For this integration, we primarily focus on safe seeding.
+        
+        print("Checking database data...")
+        response = supabase.table('menu').select('id', count='exact').limit(1).execute()
+        
+        # Safe check for count
+        count = response.count if hasattr(response, 'count') else 0
+        
+        if count == 0:
+            print("Database empty. Seeding with default menu...")
+            seed_data = [
+                {"name": "Mineral Water", "price": 5000, "image_url": "/static/images/mineral.jpg"},
+                {"name": "Roti Bakar", "price": 15000, "image_url": "/static/images/roti.jpg"},
+                {"name": "Matcha Latte", "price": 18000, "image_url": "/static/images/matcha.jpeg"},
+                {"name": "Pisang Goreng Keju", "price": 12000, "image_url": "/static/images/pisang.jpg"},
+                {"name": "Mie Goreng", "price": 10000, "image_url": "/static/images/pisang.jpg"}
+            ]
+            supabase.table('menu').insert(seed_data).execute()
+            print("Database seeded with default menu.")
+        else:
+            print(f"Database already has {count} items. Skipping seed to preserve user changes.")
+            
+    except Exception as e:
+        print(f"Safe seeding skipped or failed: {e}")
+
 if __name__ == '__main__':
+    initialize_database()
     app.run(host='0.0.0.0', port=5000, debug=True)
